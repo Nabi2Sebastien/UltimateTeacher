@@ -53,17 +53,19 @@ class BepAccReferentielExtractor
                 continue;
             }
 
-            if (preg_match('/^MODULE\s+N(?:[Â°Âºo]|Ã‚Â°|Ã‚Âº)?\s*0*([\d\w]+)\s*:\s*(.+)$/ui', $line, $matches)) {
+            if (preg_match('/^MODULE\s+N(?:[Â°Âºo]|Ã‚Â°|Ã‚Âº)?\s*0*([\d\w]+)(?:\s*[:\s]\s*(.+))?$/ui', $line, $matches)) {
                 $this->pushParsedModule($modules, $currentModule);
-                $currentModule = $this->makeEmptyModule($matches[1], $matches[2]);
+                $title = $matches[2] ?? '';
+                $currentModule = $this->makeEmptyModule($matches[1], $title);
                 $pendingField = null;
 
                 continue;
             }
 
-            if (preg_match('/^MODULES?\s+0*([0-9]+(?:\.[0-9]+)?|[A-Z][0-9]+)(?:\s+SUITE)?\s*:\s*(.+)$/ui', $line, $matches)) {
+            if (preg_match('/^MODULES?\s+0*([0-9]+(?:\.[0-9]+)?|[A-Z][0-9]+)(?:\s+SUITE)?(?:\s*[:\s]\s*(.+))?$/ui', $line, $matches)) {
                 $this->pushParsedModule($modules, $currentModule);
-                $currentModule = $this->makeEmptyModule($matches[1], $matches[2]);
+                $title = $matches[2] ?? '';
+                $currentModule = $this->makeEmptyModule($matches[1], $title);
                 $pendingField = null;
 
                 continue;
@@ -100,7 +102,26 @@ class BepAccReferentielExtractor
                 }
 
                 if (!$currentModule) {
-                    $currentModule = $this->makeEmptyModule((string) (count($modules) + 1));
+                    $existingNumero = null;
+                    $searchedTitle = $this->normalizeInlineText($matches[1]);
+                    foreach ($modules as $mod) {
+                        if (strcasecmp($mod['title'] ?? '', $searchedTitle) === 0) {
+                            $existingNumero = $mod['numero'];
+                            break;
+                        }
+                    }
+
+                    if ($existingNumero) {
+                        $currentModule = $this->makeEmptyModule($existingNumero, $searchedTitle);
+                    } else {
+                        $maxNumero = 0;
+                        foreach ($modules as $mod) {
+                            if (is_numeric($mod['numero'] ?? null)) {
+                                $maxNumero = max($maxNumero, (int) $mod['numero']);
+                            }
+                        }
+                        $currentModule = $this->makeEmptyModule((string) ($maxNumero + 1));
+                    }
                 }
 
                 $currentModule['title'] = $matches[1];
@@ -116,11 +137,11 @@ class BepAccReferentielExtractor
                 $currentModule['code'] = null; // Ignore code for Bep Acc
             }
 
-            if (preg_match('/^(?:\d+\s*[-.]?\s*)?(?:DUR(?:Ã‰|E|EE)(?:E)?(?:\s+DU\s+MODULE)?|DURÃ‰E\s+DU\s+MODULE|DUREE\s+DU\s+MODULE)\s*:\s*(\d+)/ui', $line, $matches)) {
+            if (preg_match('/^(?:\d+\s*[-.]?\s*)?(?:DUR(?:Ã‰|E|EE)(?:E)?(?:[^:]*))\s*:\s*(\d+)/ui', $line, $matches)) {
                 $currentModule['duration'] = (int) $matches[1];
             }
 
-            if (preg_match('/^(?:\d+\s*[-.]?\s*)?NIVEAU\s*:\s*(.+?)(?:\s+Volume|\s*$)/ui', $line, $matches)) {
+            if (preg_match('/^(?:\d+\s*[-.]?\s*)?NIVEAU(?:[^:]*)\s*:\s*(.+?)(?:\s+Volume|\s*$)/ui', $line, $matches)) {
                 $currentModule['level'] = $matches[1];
                 $pendingField = 'level';
             }

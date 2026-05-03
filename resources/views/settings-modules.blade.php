@@ -411,6 +411,14 @@
         background-color: #f5f8fa;
     }
     
+    .table tbody tr.sub-module-row td {
+        background-color: #f4f6f8;
+    }
+
+    .table tbody tr.sub-module-row:hover td {
+        background-color: #eef1f5;
+    }
+    
     .table tbody tr:last-child td {
         border-bottom: none;
     }
@@ -795,6 +803,11 @@
                 data.forEach(module => {
                     const tr = document.createElement('tr');
                     tr.id = `module-row-${module.id}`;
+                    
+                    const isSubModule = (module.numero && module.numero.includes('.')) || (module.code && module.code.includes('.'));
+                    if (isSubModule) {
+                        tr.classList.add('sub-module-row');
+                    }
                     
                     let html = '';
                     

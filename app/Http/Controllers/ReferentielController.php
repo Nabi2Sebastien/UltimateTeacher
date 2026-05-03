@@ -350,9 +350,10 @@ PS;
                 continue;
             }
 
-            if (preg_match('/^MODULE\s+N(?:[°ºo]|Â°|Âº)?\s*0*([\d\w]+)\s*:\s*(.+)$/ui', $line, $matches)) {
+            if (preg_match('/^MODULE\s+N(?:[°ºo]|Â°|Âº)?\s*0*([\d\w]+)(?:\s*[:\s]\s*(.+))?$/ui', $line, $matches)) {
                 $this->pushParsedModule($modules, $currentModule);
-                $currentModule = $this->makeEmptyModule('M' . $matches[1], $matches[2]);
+                $title = $matches[2] ?? '';
+                $currentModule = $this->makeEmptyModule('M' . $matches[1], $title);
                 $pendingField = null;
                 $moduleCounter = is_numeric($matches[1]) ? (int) $matches[1] : $moduleCounter;
 
@@ -383,9 +384,10 @@ PS;
                 continue;
             }
 
-            if (preg_match('/^MODULES?\s+0*([0-9]+(?:\.[0-9]+)?|[A-Z][0-9]+)(?:\s+SUITE)?\s*:\s*(.+)$/ui', $line, $matches)) {
+            if (preg_match('/^MODULES?\s+0*([0-9]+(?:\.[0-9]+)?|[A-Z][0-9]+)(?:\s+SUITE)?(?:\s*[:\s]\s*(.+))?$/ui', $line, $matches)) {
                 $this->pushParsedModule($modules, $currentModule);
-                $currentModule = $this->makeEmptyModule('M' . $matches[1], $matches[2]);
+                $title = $matches[2] ?? '';
+                $currentModule = $this->makeEmptyModule('M' . $matches[1], $title);
                 $pendingField = null;
                 $moduleCounter = is_numeric($matches[1]) ? (int) $matches[1] : $moduleCounter;
 
@@ -437,8 +439,31 @@ PS;
                 }
 
                 if (!$currentModule) {
-                    $moduleCounter++;
-                    $currentModule = $this->makeEmptyModule('M' . $moduleCounter);
+                    $existingCode = null;
+                    $searchedTitle = $this->normalizeInlineText($matches[1]);
+                    foreach ($modules as $mod) {
+                        if (strcasecmp($mod['title'] ?? '', $searchedTitle) === 0) {
+                            $existingCode = $mod['code'];
+                            break;
+                        }
+                    }
+
+                    if ($existingCode) {
+                        $currentModule = $this->makeEmptyModule($existingCode, $searchedTitle);
+                        if (preg_match('/^M(\d+)$/', $existingCode, $codeMatch)) {
+                            $moduleCounter = (int) $codeMatch[1];
+                        }
+                    } else {
+                        $maxNumero = 0;
+                        foreach ($modules as $mod) {
+                            $code = $mod['code'] ?? '';
+                            if (preg_match('/^M(\d+)$/', $code, $codeMatch)) {
+                                $maxNumero = max($maxNumero, (int) $codeMatch[1]);
+                            }
+                        }
+                        $moduleCounter = $maxNumero + 1;
+                        $currentModule = $this->makeEmptyModule('M' . $moduleCounter);
+                    }
                 }
 
                 $currentModule['title'] = $matches[1];
@@ -454,11 +479,11 @@ PS;
                 $currentModule['code'] = $matches[1];
             }
 
-            if (preg_match('/^(?:\d+\s*[-.]?\s*)?(?:DUR(?:É|E|EE)(?:E)?(?:\s+DU\s+MODULE)?|DURÉE\s+DU\s+MODULE|DUREE\s+DU\s+MODULE)\s*:\s*(\d+)/ui', $line, $matches)) {
+            if (preg_match('/^(?:\d+\s*[-.]?\s*)?(?:DUR(?:É|E|EE)(?:E)?(?:[^:]*))\s*:\s*(\d+)/ui', $line, $matches)) {
                 $currentModule['duration'] = (int) $matches[1];
             }
 
-            if (preg_match('/^(?:\d+\s*[-.]?\s*)?NIVEAU\s*:\s*(.+?)(?:\s+Volume|\s*$)/ui', $line, $matches)) {
+            if (preg_match('/^(?:\d+\s*[-.]?\s*)?NIVEAU(?:[^:]*)\s*:\s*(.+?)(?:\s+Volume|\s*$)/ui', $line, $matches)) {
                 $currentModule['level'] = $matches[1];
                 $pendingField = 'level';
             }
