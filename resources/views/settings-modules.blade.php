@@ -416,13 +416,14 @@
     }
 
     /* Frozen columns configuration */
-    .col-code { position: sticky; left: 0; z-index: 2; width: 60px; min-width: 60px; max-width: 60px; }
-    .col-title { position: sticky; left: 60px; z-index: 2; width: 180px; min-width: 180px; max-width: 180px; white-space: nowrap !important; overflow: hidden; text-overflow: ellipsis; cursor: help; }
-    .col-level { position: sticky; left: 240px; z-index: 2; width: 70px; min-width: 70px; max-width: 70px; }
-    .col-duration { position: sticky; left: 310px; z-index: 2; width: 70px; min-width: 70px; max-width: 70px; }
-    .col-actions { position: sticky; left: 380px; z-index: 2; width: 60px; min-width: 60px; max-width: 60px; border-right: 2px solid #e4e6ef; box-shadow: 2px 0 5px rgba(0,0,0,0.02); text-align: center; }
+    .col-numero { position: sticky; z-index: 2; width: 60px; min-width: 60px; max-width: 60px; }
+    .col-code { position: sticky; z-index: 2; width: 60px; min-width: 60px; max-width: 60px; }
+    .col-title { position: sticky; z-index: 2; width: 180px; min-width: 180px; max-width: 180px; white-space: nowrap !important; overflow: hidden; text-overflow: ellipsis; cursor: help; }
+    .col-level { position: sticky; z-index: 2; width: 70px; min-width: 70px; max-width: 70px; }
+    .col-duration { position: sticky; z-index: 2; width: 70px; min-width: 70px; max-width: 70px; }
+    .col-actions { position: sticky; z-index: 2; width: 60px; min-width: 60px; max-width: 60px; border-right: 2px solid #e4e6ef; box-shadow: 2px 0 5px rgba(0,0,0,0.02); text-align: center; }
 
-    .table th.col-code, .table th.col-title, .table th.col-level, .table th.col-duration, .table th.col-actions {
+    .table th.col-numero, .table th.col-code, .table th.col-title, .table th.col-level, .table th.col-duration, .table th.col-actions {
         z-index: 12;
         background-color: #f9f9f9;
     }
@@ -567,6 +568,7 @@
             <table class="table" id="modulesTable">
                 <thead>
                     <tr>
+                        <th class="col-numero">Numéro</th>
                         <th class="col-code">Code</th>
                         <th class="col-title">Titre</th>
                         <th class="col-level">Niveau</th>
@@ -595,8 +597,9 @@
             <button type="button" class="modal-close" onclick="closeAddModal()">&times;</button>
         </div>
         <div class="modal-body" style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+            <input type="text" id="newModuleNumero" class="form-control" placeholder="Numéro (ex: 1.1)">
             <input type="text" id="newModuleCode" class="form-control" placeholder="Code (ex: M101)">
-            <input type="text" id="newModuleTitle" class="form-control" placeholder="Titre complet..." required>
+            <input type="text" id="newModuleTitle" class="form-control" placeholder="Titre complet..." style="grid-column: 1 / -1;" required>
             
             <div style="display: flex; align-items: center; gap: 10px;">
                 <input type="number" id="newModuleDuration" class="form-control" placeholder="Durée" style="width: 100px;">
@@ -625,8 +628,9 @@
         </div>
         <div class="modal-body" style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
             <input type="hidden" id="editModuleId">
+            <input type="text" id="editModuleNumero" class="form-control" placeholder="Numéro (ex: 1.1)">
             <input type="text" id="editModuleCode" class="form-control" placeholder="Code (ex: M101)">
-            <input type="text" id="editModuleTitle" class="form-control" placeholder="Titre complet..." required>
+            <input type="text" id="editModuleTitle" class="form-control" placeholder="Titre complet..." style="grid-column: 1 / -1;" required>
             
             <div style="display: flex; align-items: center; gap: 10px;">
                 <input type="number" id="editModuleDuration" class="form-control" placeholder="Durée" style="width: 100px;">
@@ -748,15 +752,64 @@
                     btnExtractModules.title = "Modules déjà extraits. Supprimez-les pour recommencer.";
                 }
 
+                // Toujours afficher le numéro et le code pour faciliter l'édition
+                const hasNumero = true;
+                const hasCode = true;
+                
+                const thNumero = document.querySelector('th.col-numero');
+                const thCode = document.querySelector('th.col-code');
+                const thTitle = document.querySelector('th.col-title');
+                const thLevel = document.querySelector('th.col-level');
+                const thDuration = document.querySelector('th.col-duration');
+                const thActions = document.querySelector('th.col-actions');
+
+                let currentLeft = 0;
+                
+                if (hasNumero) {
+                    thNumero.style.display = '';
+                    thNumero.style.left = currentLeft + 'px';
+                    currentLeft += 60;
+                } else {
+                    thNumero.style.display = 'none';
+                }
+
+                if (hasCode || (!hasCode && !hasNumero)) { // Show Code if both are missing just in case
+                    thCode.style.display = '';
+                    thCode.style.left = currentLeft + 'px';
+                    currentLeft += 60;
+                } else {
+                    thCode.style.display = 'none';
+                }
+
+                thTitle.style.left = currentLeft + 'px';
+                currentLeft += 180;
+                
+                thLevel.style.left = currentLeft + 'px';
+                currentLeft += 70;
+                
+                thDuration.style.left = currentLeft + 'px';
+                currentLeft += 70;
+                
+                thActions.style.left = currentLeft + 'px';
+
                 data.forEach(module => {
                     const tr = document.createElement('tr');
                     tr.id = `module-row-${module.id}`;
-                    tr.innerHTML = `
-                        <td class="col-code" style="font-weight: 600; color: var(--accent);">${module.code || '-'}</td>
-                        <td class="col-title" title="${module.title ? module.title.replace(/"/g, '&quot;') : '-'}" style="font-weight: 500; color: #181c32;">${module.title || '-'}</td>
-                        <td class="col-level" style="color: #7e8299;">${module.level || '-'}</td>
-                        <td class="col-duration" style="color: #7e8299;">${module.duration ? module.duration + 'h' : '-'}</td>
-                        <td class="col-actions">
+                    
+                    let html = '';
+                    
+                    if (hasNumero) {
+                        html += `<td class="col-numero" style="left: ${thNumero.style.left}; font-weight: 600; color: #181c32;">${module.numero || '-'}</td>`;
+                    }
+                    if (hasCode || (!hasCode && !hasNumero)) {
+                        html += `<td class="col-code" style="left: ${thCode.style.left}; font-weight: 600; color: var(--accent);">${module.code || '-'}</td>`;
+                    }
+                    
+                    html += `
+                        <td class="col-title" title="${module.title ? module.title.replace(/"/g, '&quot;') : '-'}" style="left: ${thTitle.style.left}; font-weight: 500; color: #181c32;">${module.title || '-'}</td>
+                        <td class="col-level" style="left: ${thLevel.style.left}; color: #7e8299;">${module.level || '-'}</td>
+                        <td class="col-duration" style="left: ${thDuration.style.left}; color: #7e8299;">${module.duration ? module.duration + 'h' : '-'}</td>
+                        <td class="col-actions" style="left: ${thActions.style.left};">
                             <button class="btn-icon btn-icon-edit" title="Modifier" onclick='editModule(${JSON.stringify(module).replace(/'/g, "&#39;")})' style="display: inline-flex; margin: 0 auto;">
                                 <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>
                             </button>
@@ -766,6 +819,7 @@
                         <td class="col-profile" style="color: #7e8299;">${module.teacher_profile || '-'}</td>
                         <td class="col-bibliographie" style="color: #7e8299;">${module.bibliographie || '-'}</td>
                     `;
+                    tr.innerHTML = html;
                     modulesList.appendChild(tr);
                 });
             })
@@ -776,6 +830,7 @@
 
     function editModule(module) {
         document.getElementById('editModuleId').value = module.id;
+        document.getElementById('editModuleNumero').value = module.numero || '';
         document.getElementById('editModuleCode').value = module.code || '';
         document.getElementById('editModuleTitle').value = module.title || '';
         document.getElementById('editModuleDuration').value = module.duration || '';
@@ -795,6 +850,7 @@
 
     function submitEditModule() {
         const moduleId = document.getElementById('editModuleId').value;
+        const numero = document.getElementById('editModuleNumero').value.trim();
         const code = document.getElementById('editModuleCode').value.trim();
         const title = document.getElementById('editModuleTitle').value.trim();
         const duration = document.getElementById('editModuleDuration').value;
@@ -822,6 +878,7 @@
                 'Accept': 'application/json'
             },
             body: JSON.stringify({ 
+                numero: numero,
                 code: code,
                 title: title,
                 duration: duration,
@@ -851,6 +908,7 @@
 
     function addModule() {
         const refId = referentielSelect.value;
+        const numero = document.getElementById('newModuleNumero').value.trim();
         const code = document.getElementById('newModuleCode').value.trim();
         const title = document.getElementById('newModuleTitle').value.trim();
         const duration = document.getElementById('newModuleDuration').value;
@@ -866,6 +924,7 @@
         }
 
         // Reset inputs immediately
+        document.getElementById('newModuleNumero').value = '';
         document.getElementById('newModuleCode').value = '';
         document.getElementById('newModuleTitle').value = '';
         document.getElementById('newModuleDuration').value = '';
@@ -885,6 +944,7 @@
                 'Accept': 'application/json'
             },
             body: JSON.stringify({ 
+                numero: numero,
                 code: code,
                 title: title,
                 duration: duration,
@@ -925,6 +985,7 @@
     function closeAddModal() {
         addModuleModal.style.display = 'none';
         // Reset inputs on close
+        document.getElementById('newModuleNumero').value = '';
         document.getElementById('newModuleCode').value = '';
         document.getElementById('newModuleTitle').value = '';
         document.getElementById('newModuleDuration').value = '';

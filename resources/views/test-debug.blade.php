@@ -222,7 +222,7 @@
                             <table class="table table-striped table-hover">
                                 <thead class="table-dark">
                                     <tr>
-                                        <th>#</th>
+                                        <th>Numéro</th>
                     `;
                     
                     // Ajouter seulement les colonnes qui ont des données

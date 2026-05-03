@@ -6,7 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class Module extends Model
 {
-    protected $fillable = ['referentiel_id', 'code', 'parent_module', 'title', 'duration', 'level', 'teacher_profile', 'pedagogical_approach', 'assessment_type', 'bibliographie'];
+    protected $fillable = ['numero', 'referentiel_id', 'code', 'parent_module', 'title', 'duration', 'level', 'teacher_profile', 'pedagogical_approach', 'assessment_type', 'bibliographie'];
 
     public function referentiel()
     {

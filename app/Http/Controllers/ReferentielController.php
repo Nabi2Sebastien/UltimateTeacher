@@ -492,7 +492,50 @@ PS;
             return $this->parseSectionModules($lines);
         }
 
-        return $modules;
+
+        // Déduplication des modules par leur code pour éviter les répétitions (ex: "MODULE 1 SUITE")
+        $uniqueModules = [];
+        foreach ($modules as $module) {
+            $code = $module['code'] ?? null;
+            if ($code) {
+                if (!isset($uniqueModules[$code])) {
+                    $uniqueModules[$code] = $module;
+                } else {
+                    // Fusionner les champs si le module est répété
+                    foreach (['duration', 'level', 'teacher_profile', 'pedagogical_approach', 'assessment_type'] as $field) {
+                        if (empty($uniqueModules[$code][$field]) && !empty($module[$field])) {
+                            $uniqueModules[$code][$field] = $module[$field];
+                        } elseif (!empty($uniqueModules[$code][$field]) && !empty($module[$field]) && $uniqueModules[$code][$field] !== $module[$field]) {
+                            // Ajouter les informations supplémentaires si elles sont différentes
+                            if (!str_contains($uniqueModules[$code][$field], $module[$field])) {
+                                $uniqueModules[$code][$field] .= ', ' . $module[$field];
+                            }
+                        }
+                    }
+                }
+            } else {
+                $uniqueModules[] = $module;
+            }
+        }
+
+        $finalModules = array_values($uniqueModules);
+        
+        usort($finalModules, function ($a, $b) {
+            $codeA = $a['code'] ?? '';
+            $codeB = $b['code'] ?? '';
+            
+            if ($codeA === '' && $codeB === '') return 0;
+            if ($codeA === '') return 1;
+            if ($codeB === '') return -1;
+            
+            // On enlève les caractères non numériques comme le 'M' pour le tri naturel
+            $numA = preg_replace('/[^0-9.]/', '', $codeA);
+            $numB = preg_replace('/[^0-9.]/', '', $codeB);
+            
+            return version_compare($numA, $numB);
+        });
+
+        return $finalModules;
     }
 
     private function parseRmiModules(array $lines): array
@@ -807,6 +850,7 @@ PS;
     public function storeModule(Request $request, Referentiel $referentiel)
     {
         $request->validate([
+            'numero' => 'nullable|string|max:50',
             'code' => 'nullable|string|max:50',
             'title' => 'required|string|max:255',
             'duration' => 'nullable|integer|min:1',
@@ -814,9 +858,11 @@ PS;
             'teacher_profile' => 'nullable|string|max:255',
             'pedagogical_approach' => 'nullable|string|max:255',
             'assessment_type' => 'nullable|string|max:255',
+            'bibliographie' => 'nullable|string|max:255',
         ]);
 
         $module = $referentiel->modules()->create([
+            'numero' => $request->numero,
             'code' => $request->code,
             'title' => $request->title,
             'duration' => $request->duration,
@@ -824,6 +870,7 @@ PS;
             'teacher_profile' => $request->teacher_profile,
             'pedagogical_approach' => $request->pedagogical_approach,
             'assessment_type' => $request->assessment_type,
+            'bibliographie' => $request->bibliographie,
         ]);
 
         return response()->json($module, 201);
@@ -832,6 +879,7 @@ PS;
     public function updateModule(Request $request, Module $module)
     {
         $request->validate([
+            'numero' => 'nullable|string|max:50',
             'code' => 'nullable|string|max:50',
             'title' => 'required|string|max:255',
             'duration' => 'nullable|integer|min:1',
@@ -839,9 +887,11 @@ PS;
             'teacher_profile' => 'nullable|string|max:255',
             'pedagogical_approach' => 'nullable|string|max:255',
             'assessment_type' => 'nullable|string|max:255',
+            'bibliographie' => 'nullable|string|max:255',
         ]);
 
         $module->update([
+            'numero' => $request->numero,
             'code' => $request->code,
             'title' => $request->title,
             'duration' => $request->duration,
@@ -849,6 +899,7 @@ PS;
             'teacher_profile' => $request->teacher_profile,
             'pedagogical_approach' => $request->pedagogical_approach,
             'assessment_type' => $request->assessment_type,
+            'bibliographie' => $request->bibliographie,
         ]);
 
         return response()->json($module);

@@ -138,7 +138,47 @@ class BepAccReferentielExtractor
 
         $this->pushParsedModule($modules, $currentModule);
 
-        return $modules;
+        // Déduplication des modules par leur numéro pour éviter les répétitions (ex: "MODULE 1 SUITE")
+        $uniqueModules = [];
+        foreach ($modules as $module) {
+            $numero = $module['numero'] ?? null;
+            if ($numero) {
+                if (!isset($uniqueModules[$numero])) {
+                    $uniqueModules[$numero] = $module;
+                } else {
+                    // Fusionner les champs si le module est répété
+                    foreach (['duration', 'level', 'teacher_profile', 'pedagogical_approach', 'assessment_type'] as $field) {
+                        if (empty($uniqueModules[$numero][$field]) && !empty($module[$field])) {
+                            $uniqueModules[$numero][$field] = $module[$field];
+                        } elseif (!empty($uniqueModules[$numero][$field]) && !empty($module[$field]) && $uniqueModules[$numero][$field] !== $module[$field]) {
+                            // Ajouter les informations supplémentaires si elles sont différentes
+                            if (!str_contains($uniqueModules[$numero][$field], $module[$field])) {
+                                $uniqueModules[$numero][$field] .= ', ' . $module[$field];
+                            }
+                        }
+                    }
+                }
+            } else {
+                $uniqueModules[] = $module;
+            }
+        }
+
+        $finalModules = array_values($uniqueModules);
+        
+        usort($finalModules, function ($a, $b) {
+            $numA = $a['numero'] ?? '';
+            $numB = $b['numero'] ?? '';
+            
+            if ($numA === '' && $numB === '') return 0;
+            if ($numA === '') return 1;
+            if ($numB === '') return -1;
+            
+            // Nettoyage des caractères non numériques ou de ponctuation avant comparaison
+            // ex: si numero est "1" ou "1.1" version_compare fonctionnera parfaitement
+            return version_compare($numA, $numB);
+        });
+
+        return $finalModules;
     }
 
     private function findParentModuleTitle(array $modules, ?array $currentModule, string $parentCode): ?string
