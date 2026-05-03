@@ -458,8 +458,8 @@
     .modal-content {
         background: white;
         border-radius: 12px;
-        width: 90%;
-        max-width: 500px;
+        width: 96%;
+        max-width: 1100px;
         box-shadow: 0 10px 30px rgba(0,0,0,0.2);
         animation: modalFadeIn 0.3s;
     }
@@ -924,7 +924,7 @@
                             <button class="btn-icon btn-icon-edit" title="Modifier" onclick='editModule(${JSON.stringify(module).replace(/'/g, "&#39;")})' style="display: inline-flex;">
                                 <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>
                             </button>
-                            <button class="btn-icon btn-icon-view" title="GÃ©rer la bibliographie (${module.bibliographies_count || 0})" onclick='openBibliographyModal(${module.id}, ${JSON.stringify(module.title || '').replace(/'/g, "&#39;")})' style="display: inline-flex;">
+                            <button class="btn-icon btn-icon-view" data-module-id="${module.id}" data-module-title="${escapeHtml(module.title || '')}" title="Gérer la bibliographie (${module.bibliographies_count || 0})" style="display: inline-flex;">
                                 <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M18 2H6c-1.1 0-2 .9-2 2v17c0 .55.45 1 1 1 .19 0 .37-.05.54-.16L12 18l6.46 3.84c.17.11.35.16.54.16.55 0 1-.45 1-1V4c0-1.1-.9-2-2-2zm0 17.23-6-3.56-6 3.56V4h12v15.23z"/></svg>
                             </button>
                         </td>
@@ -934,6 +934,15 @@
                     `;
                     tr.innerHTML = html;
                     modulesList.appendChild(tr);
+
+                    const viewButton = tr.querySelector('.btn-icon-view');
+                    if (viewButton) {
+                        viewButton.addEventListener('click', function() {
+                            const moduleId = this.dataset.moduleId;
+                            const moduleTitle = this.dataset.moduleTitle || '';
+                            openBibliographyModal(moduleId, moduleTitle);
+                        });
+                    }
                 });
             })
             .catch(err => {
@@ -1103,11 +1112,17 @@
     }
 
     function openBibliographyModal(moduleId, moduleTitle) {
-        document.getElementById('bibliographyModuleId').value = moduleId;
+        const currentModuleId = parseInt(moduleId, 10);
+        if (Number.isNaN(currentModuleId)) {
+            alert('Impossible de charger la bibliographie : identifiant de module invalide.');
+            return;
+        }
+
+        document.getElementById('bibliographyModuleId').value = currentModuleId;
         document.getElementById('bibliographyModalTitle').textContent = `Bibliographie - ${moduleTitle || 'Module'}`;
         resetBibliographyForm();
         bibliographyModal.style.display = 'flex';
-        fetchBibliographies(moduleId);
+        fetchBibliographies(currentModuleId);
     }
 
     function closeBibliographyModal() {

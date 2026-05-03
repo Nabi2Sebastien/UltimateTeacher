@@ -45,7 +45,7 @@ class BepAccReferentielExtractor
                 $pendingField = null;
             }
 
-            if ($currentModule && preg_match('/^BIBLIOGRAPHIE\s*:?\s*(.*)$/ui', $line, $matches)) {
+            if ($currentModule && preg_match('/^(?:[IVX]+|\d+(?:\.\d+)?)\s*[\.\-\)]?\s*BIBLIOGRAPHIE\s*:?\s*(.*)$/ui', $line, $matches)) {
                 $pendingField = 'bibliographies';
 
                 if (!blank($matches[1] ?? '')) {
