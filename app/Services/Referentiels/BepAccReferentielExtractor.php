@@ -232,6 +232,11 @@ class BepAccReferentielExtractor
         }
 
         $finalModules = array_values($uniqueModules);
+
+        foreach ($finalModules as &$module) {
+            $module['bibliographies'] = $this->parseBibliographyEntries($module['bibliographies'] ?? []);
+        }
+        unset($module);
         
         usort($finalModules, function ($a, $b) {
             $numA = $a['numero'] ?? '';
@@ -290,6 +295,84 @@ class BepAccReferentielExtractor
         }
 
         return $bibliographies;
+    }
+
+    private function parseBibliographyEntries(array $lines): array
+    {
+        $entries = [];
+        $current = [];
+
+        foreach ($lines as $line) {
+            $line = $this->normalizeInlineText((string) $line);
+
+            if ($line === '') {
+                continue;
+            }
+
+            if (preg_match('/^[a-z]\.\s+/ui', $line) && $current !== []) {
+                $entries[] = $this->parseBibliographyEntry($current);
+                $current = [];
+            }
+
+            $current[] = preg_replace('/^[a-z]\.\s+/ui', '', $line) ?? $line;
+        }
+
+        if ($current !== []) {
+            $entries[] = $this->parseBibliographyEntry($current);
+        }
+
+        return array_values(array_filter($entries, static fn ($entry) => !blank($entry['raw_text'] ?? null)));
+    }
+
+    private function parseBibliographyEntry(array $lines): array
+    {
+        $rawText = $this->normalizeInlineText(implode(', ', $lines));
+        $entry = [
+            'author' => null,
+            'title' => null,
+            'publisher' => null,
+            'year' => null,
+            'pages' => null,
+            'raw_text' => $rawText,
+        ];
+
+        if (preg_match('/\b(19|20)\d{2}\b/u', $rawText, $matches, PREG_OFFSET_CAPTURE)) {
+            $entry['year'] = $matches[0][0];
+        }
+
+        if (preg_match('/\b(\d+)\s*p(?:ages?)?\.?\b/ui', $rawText, $matches)) {
+            $entry['pages'] = $matches[1];
+        }
+
+        $parts = array_values(array_filter(
+            array_map(fn ($part) => $this->normalizeInlineText($part), explode(',', $rawText)),
+            static fn ($part) => $part !== ''
+        ));
+
+        if (count($parts) >= 2) {
+            $entry['author'] = $parts[0];
+            $entry['title'] = $parts[1];
+        }
+
+        foreach ($parts as $part) {
+            if (preg_match('/^(?:Edition|Editions|Ed\.?)\s+(.+)$/ui', $part, $matches)) {
+                $publisher = $this->normalizeInlineText($matches[1]);
+                $publisher = preg_replace('/\b(19|20)\d{2}\b.*$/u', '', $publisher) ?? $publisher;
+                $entry['publisher'] = $this->normalizeInlineText($publisher);
+                break;
+            }
+        }
+
+        if (!$entry['publisher'] && count($parts) >= 3) {
+            foreach ($parts as $part) {
+                if (!preg_match('/\b(19|20)\d{2}\b/u', $part) && !preg_match('/\b\d+\s*p(?:ages?)?\.?\b/ui', $part) && $part !== $entry['author'] && $part !== $entry['title']) {
+                    $entry['publisher'] = $part;
+                    break;
+                }
+            }
+        }
+
+        return $entry;
     }
 
     private function isFieldContinuation(string $line): bool

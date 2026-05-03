@@ -80,12 +80,27 @@ class ReferentielController extends Controller
 
                 $createdModule = $referentiel->modules()->create($module);
 
+                $bibliographyRows = [];
+
                 foreach ($bibliographies as $bibliographie) {
-                    $createdModule->bibliographies()->create([
-                        'raw_text' => is_array($bibliographie)
-                            ? ($bibliographie['raw_text'] ?? null)
-                            : (string) $bibliographie,
+                    $bibliographyRows[] = array_merge(is_array($bibliographie) ? [
+                        'author' => $bibliographie['author'] ?? null,
+                        'title' => $bibliographie['title'] ?? null,
+                        'publisher' => $bibliographie['publisher'] ?? null,
+                        'year' => $bibliographie['year'] ?? null,
+                        'pages' => $bibliographie['pages'] ?? null,
+                        'raw_text' => $bibliographie['raw_text'] ?? null,
+                    ] : [
+                        'raw_text' => (string) $bibliographie,
+                    ], [
+                        'module_id' => $createdModule->id,
+                        'created_at' => now(),
+                        'updated_at' => now(),
                     ]);
+                }
+
+                if ($bibliographyRows !== []) {
+                    $createdModule->bibliographies()->insert($bibliographyRows);
                 }
             }
         } catch (\Throwable $e) {
