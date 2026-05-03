@@ -275,7 +275,12 @@ class BepAccReferentielExtractor
             return false;
         }
 
-        if (preg_match('/^(?:MODULES?|SOUS[\s-]*MODULES?|TITRE DU MODULE|CODE|DUR(?:Ã‰|E|EE)E|DUREE|NIVEAU|CLASSE|OBJECTIF|PLACE DANS LE REFERENTIEL|RÃƒâ€LE ET IMPORTANCE|ROLE ET IMPORTANCE|CONTENUS ESSENTIELS|TYPE(?:S)?\s+D|D(?:Ã‰|E)MARCHES?|TABLEAU DE REPARTITION|[IVX]+\.)/ui', $line)) {
+        // Stop bibliography section if we hit a numbered section header (e.g., "10.", "X.", etc.)
+        if (preg_match('/^(?:\d+|[IVX]+)\s*[\.\-\)]\s*(?:[A-Z]|MODULE|TABLEAU|DESCRIPTION)/ui', $line)) {
+            return false;
+        }
+
+        if (preg_match('/^(?:MODULES?|SOUS[\s-]*MODULES?|TITRE DU MODULE|CODE|DUR(?:Ã‰|E|EE)E|DUREE|NIVEAU|CLASSE|OBJECTIF|PLACE DANS LE REFERENTIEL|RÃƒâ€LE ET IMPORTANCE|ROLE ET IMPORTANCE|CONTENUS ESSENTIELS|TYPE(?:S)?\s+D|D(?:Ã‰|E)MARCHES?|TABLEAU DE REPARTITION)/ui', $line)) {
             return false;
         }
 
@@ -300,28 +305,27 @@ class BepAccReferentielExtractor
     private function parseBibliographyEntries(array $lines): array
     {
         $entries = [];
-        $current = [];
-
-        foreach ($lines as $line) {
-            $line = $this->normalizeInlineText((string) $line);
-
-            if ($line === '') {
-                continue;
+        
+        // Joindre toutes les lignes avec un séparateur pour traiter le texte comme un bloc
+        $fullText = implode(' ', array_map(fn ($line) => $this->normalizeInlineText($line), $lines));
+        
+        // Diviser sur les séparateurs principaux : tirets ou points-virgules suivis d'un nouveau livre
+        // Pattern: "- " ou "; - " ou juste ";" ou une lettre avec point (a., b., c.)
+        $books = preg_split('/\s*(?:\-\s*|\;\s*\-\s*|\;(?=\s*[A-Z]|[a-z]\.)|(?<=\d[ap])\s*;\s*)/u', $fullText);
+        
+        foreach ($books as $book) {
+            $book = $this->normalizeInlineText(trim($book));
+            if ($book !== '' && strlen($book) > 3) {
+                // Enlever les puces ou lettres initiales (a., b., -)
+                $book = preg_replace('/^[\s\-a-z]\.\s+/', '', $book) ?? $book;
+                $entry = $this->parseBibliographyEntry([$book]);
+                if (!blank($entry['raw_text'] ?? null)) {
+                    $entries[] = $entry;
+                }
             }
-
-            if (preg_match('/^[a-z]\.\s+/ui', $line) && $current !== []) {
-                $entries[] = $this->parseBibliographyEntry($current);
-                $current = [];
-            }
-
-            $current[] = preg_replace('/^[a-z]\.\s+/ui', '', $line) ?? $line;
         }
 
-        if ($current !== []) {
-            $entries[] = $this->parseBibliographyEntry($current);
-        }
-
-        return array_values(array_filter($entries, static fn ($entry) => !blank($entry['raw_text'] ?? null)));
+        return array_values($entries);
     }
 
     private function parseBibliographyEntry(array $lines): array
