@@ -512,23 +512,53 @@
         min-height: 70px;
         resize: vertical;
     }
-    .bibliography-list {
-        display: grid;
-        gap: 10px;
+    .bibliography-table-wrapper {
         max-height: 320px;
-        overflow-y: auto;
-    }
-    .bibliography-item {
+        overflow: auto;
         border: 1px solid #e4e6ef;
-        border-radius: 8px;
-        padding: 12px;
+        border-radius: 10px;
         background: #fff;
     }
-    .bibliography-item-actions {
+    .bibliography-table {
+        width: 100%;
+        border-collapse: collapse;
+        min-width: 900px;
+    }
+    .bibliography-table th,
+    .bibliography-table td {
+        padding: 10px 12px;
+        border-bottom: 1px solid #e4e6ef;
+        vertical-align: top;
+    }
+    .bibliography-table th {
+        background: #f8fafc;
+        color: #3e4d7a;
+        font-weight: 700;
+        text-align: left;
+        position: sticky;
+        top: 0;
+        z-index: 1;
+    }
+    .bibliography-table td input,
+    .bibliography-table td textarea {
+        width: 100%;
+        border: 1px solid #d2d6e0;
+        border-radius: 6px;
+        padding: 8px;
+        background: #fafbff;
+        color: #1f2937;
+        font-size: 0.95rem;
+        box-sizing: border-box;
+    }
+    .bibliography-table td textarea {
+        min-height: 64px;
+        resize: vertical;
+    }
+    .bibliography-row-actions {
         display: flex;
-        justify-content: flex-end;
+        flex-wrap: wrap;
         gap: 8px;
-        margin-top: 10px;
+        justify-content: flex-end;
     }
 
 </style>
@@ -698,13 +728,28 @@
             <div class="bibliography-toolbar">
                 <input type="text" id="newBibliographyAuthor" class="form-control" placeholder="Auteur">
                 <input type="text" id="newBibliographyTitle" class="form-control" placeholder="Titre">
-                <input type="text" id="newBibliographyPublisher" class="form-control" placeholder="Ã‰diteur">
-                <input type="text" id="newBibliographyYear" class="form-control" placeholder="AnnÃ©e">
+                <input type="text" id="newBibliographyPublisher" class="form-control" placeholder="Éditeur">
+                <input type="text" id="newBibliographyYear" class="form-control" placeholder="Année">
                 <input type="text" id="newBibliographyPages" class="form-control" placeholder="Pages">
                 <textarea id="newBibliographyRawText" class="form-control" placeholder="Texte brut"></textarea>
                 <button type="button" class="btn btn-primary" onclick="addBibliography()" style="grid-column: 1 / -1; justify-content: center;">Ajouter l'ouvrage</button>
             </div>
-            <div id="bibliographyList" class="bibliography-list"></div>
+            <div class="bibliography-table-wrapper">
+                <table class="bibliography-table">
+                    <thead>
+                        <tr>
+                            <th>Auteur</th>
+                            <th>Titre</th>
+                            <th>Éditeur</th>
+                            <th>Année</th>
+                            <th>Pages</th>
+                            <th>Texte brut</th>
+                            <th style="width: 170px; text-align: center;">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="bibliographyList"></tbody>
+                </table>
+            </div>
         </div>
     </div>
 </div>
@@ -1081,13 +1126,13 @@
     }
 
     function fetchBibliographies(moduleId) {
-        bibliographyList.innerHTML = '<div style="text-align: center; color: #a1a5b7; padding: 15px;">Chargement...</div>';
+        bibliographyList.innerHTML = '<tr><td colspan="7" style="text-align: center; color: #a1a5b7; padding: 15px;">Chargement...</td></tr>';
 
         fetch(`/settings/modules/${moduleId}/bibliographies`)
             .then(response => response.json())
             .then(data => {
                 if (data.length === 0) {
-                    bibliographyList.innerHTML = '<div style="text-align: center; color: #a1a5b7; padding: 15px;">Aucun ouvrage pour ce module.</div>';
+                    bibliographyList.innerHTML = '<tr><td colspan="7" style="text-align: center; color: #a1a5b7; padding: 15px;">Aucun ouvrage pour ce module.</td></tr>';
                     return;
                 }
 
@@ -1095,30 +1140,26 @@
                 data.forEach(item => bibliographyList.appendChild(renderBibliographyItem(item)));
             })
             .catch(() => {
-                bibliographyList.innerHTML = '<div style="text-align: center; color: #f1416c; padding: 15px;">Erreur de chargement.</div>';
+                bibliographyList.innerHTML = '<tr><td colspan="7" style="text-align: center; color: #f1416c; padding: 15px;">Erreur de chargement.</td></tr>';
             });
     }
 
     function renderBibliographyItem(item) {
-        const wrapper = document.createElement('div');
-        wrapper.className = 'bibliography-item';
-        wrapper.id = `bibliography-${item.id}`;
-        wrapper.innerHTML = `
-            <div class="bibliography-item-fields">
-                <input type="text" class="form-control" data-field="author" value="${escapeHtml(item.author || '')}" placeholder="Auteur">
-                <input type="text" class="form-control" data-field="title" value="${escapeHtml(item.title || '')}" placeholder="Titre">
-                <input type="text" class="form-control" data-field="publisher" value="${escapeHtml(item.publisher || '')}" placeholder="Editeur">
-                <input type="text" class="form-control" data-field="year" value="${escapeHtml(item.year || '')}" placeholder="Annee">
-                <input type="text" class="form-control" data-field="pages" value="${escapeHtml(item.pages || '')}" placeholder="Pages">
-                <textarea class="form-control" data-field="raw_text" placeholder="Texte brut">${escapeHtml(item.raw_text || '')}</textarea>
-            </div>
-            <div class="bibliography-item-actions">
+        const tr = document.createElement('tr');
+        tr.id = `bibliography-${item.id}`;
+        tr.innerHTML = `
+            <td><input type="text" class="form-control" data-field="author" value="${escapeHtml(item.author || '')}" placeholder="Auteur"></td>
+            <td><input type="text" class="form-control" data-field="title" value="${escapeHtml(item.title || '')}" placeholder="Titre"></td>
+            <td><input type="text" class="form-control" data-field="publisher" value="${escapeHtml(item.publisher || '')}" placeholder="Éditeur"></td>
+            <td><input type="text" class="form-control" data-field="year" value="${escapeHtml(item.year || '')}" placeholder="Année"></td>
+            <td><input type="text" class="form-control" data-field="pages" value="${escapeHtml(item.pages || '')}" placeholder="Pages"></td>
+            <td><textarea class="form-control" data-field="raw_text" placeholder="Texte brut">${escapeHtml(item.raw_text || '')}</textarea></td>
+            <td class="bibliography-row-actions">
                 <button type="button" class="btn btn-secondary" onclick="updateBibliography(${item.id})" style="padding: 8px 14px; font-size: 0.85rem;">Modifier</button>
                 <button type="button" class="btn btn-danger" onclick="deleteBibliography(${item.id})" style="padding: 8px 14px; font-size: 0.85rem;">Supprimer</button>
-            </div>
+            </td>
         `;
-
-        return wrapper;
+        return tr;
     }
 
     function getBibliographyPayload(prefix) {
@@ -1164,6 +1205,8 @@
     }
 
     function updateBibliography(id) {
+        const moduleId = document.getElementById('bibliographyModuleId').value;
+
         fetch(`/settings/bibliographies/${id}`, {
             method: 'PUT',
             headers: {
@@ -1175,6 +1218,8 @@
         })
         .then(response => {
             if (!response.ok) throw new Error();
+            fetchBibliographies(moduleId);
+            fetchModules(referentielSelect.value);
         })
         .catch(() => alert("Erreur lors de la modification de l'ouvrage."));
     }
