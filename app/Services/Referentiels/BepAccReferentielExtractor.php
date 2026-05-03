@@ -313,11 +313,13 @@ class BepAccReferentielExtractor
         // Les formats supportés:
         // 1. Numéros avec point: 1., 2., 3., 9., etc.
         // 2. Lettres avec point: a., b., c., d., etc.
-        // 3. Tirets: "- " (séparateur principal entre les livres)
-        // 4. Points-virgules: "; "
-        // Pattern: divise avant un numéro/lettre suivi d'un point et espace,
-        // ou avant un tiret suivi d'espace et une majuscule
-        $books = preg_split('/\s+(?=\d+\.\s+|[a-z]\.\s+|\-\s+[A-Z]|;\s+)/u', $fullText);
+        // 3. Tirets standards ou spéciaux: "- " ou "− " (tiret bas Unicode U+2212)
+        // 4. Points-virgules suivis de tirets: "; - " ou "; − "
+        // 5. Points-virgules seuls: "; "
+        // Pattern: divise avant numéro/lettre suivi d'un point et espace,
+        // ou avant un tiret (standard ou Unicode) suivi d'espace et majuscule,
+        // ou avant un point-virgule
+        $books = preg_split('/\s+(?=\d+\.\s+|[a-z]\.\s+|[\-−]\s+[A-Z]|;\s*[\-−]\s+|;\s+)/u', $fullText);
         
         foreach ($books as $book) {
             $book = $this->normalizeInlineText(trim($book));
@@ -326,15 +328,15 @@ class BepAccReferentielExtractor
             }
             
             // Supprimer les catégories (Windows, Traitement de textes, Tableurs, Internet, etc.)
-            if (preg_match('/^(?:Windows|Traitement\s+de\s+textes?|Tableurs?|Internet|Applications?|Bureautique|Revues?\s+périodiques?)\s*-?\s*$/ui', $book)) {
+            if (preg_match('/^(?:Windows|Traitement\s+de\s+textes?|Tableurs?|Internet|Applications?|Bureautique|Revues?\s+périodiques?)\s*[\-−]?\s*$/ui', $book)) {
                 continue;
             }
             
-            // Enlever les puces ou numéros/lettres initiales (1., a., b., c., etc. ou -)
+            // Enlever les puces ou numéros/lettres initiales (1., a., b., c., etc. ou - ou −)
             $book = preg_replace('/^\d+\.\s+/', '', $book) ?? $book;
             $book = preg_replace('/^[a-z]\.\s+/', '', $book) ?? $book;
-            $book = preg_replace('/^\-\s+/', '', $book) ?? $book;
-            $book = preg_replace('/^;\s*\-?\s*/', '', $book) ?? $book;
+            $book = preg_replace('/^[\-−]\s+/', '', $book) ?? $book;
+            $book = preg_replace('/^;\s*[\-−]?\s*/', '', $book) ?? $book;
             $book = $this->normalizeInlineText(trim($book));
             
             if ($book !== '' && strlen($book) > 5) {
