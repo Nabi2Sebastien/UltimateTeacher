@@ -429,7 +429,7 @@
     .col-title { position: sticky; z-index: 2; width: 180px; min-width: 180px; max-width: 180px; white-space: nowrap !important; overflow: hidden; text-overflow: ellipsis; cursor: help; }
     .col-level { position: sticky; z-index: 2; width: 70px; min-width: 70px; max-width: 70px; }
     .col-duration { position: sticky; z-index: 2; width: 70px; min-width: 70px; max-width: 70px; }
-    .col-actions { position: sticky; z-index: 2; width: 60px; min-width: 60px; max-width: 60px; border-right: 2px solid #e4e6ef; box-shadow: 2px 0 5px rgba(0,0,0,0.02); text-align: center; }
+    .col-actions { position: sticky; z-index: 2; width: 105px; min-width: 105px; max-width: 105px; border-right: 2px solid #e4e6ef; box-shadow: 2px 0 5px rgba(0,0,0,0.02); text-align: center; }
 
     .table th.col-numero, .table th.col-code, .table th.col-title, .table th.col-level, .table th.col-duration, .table th.col-actions {
         z-index: 12;
@@ -498,6 +498,37 @@
 
     .modal-body {
         padding: 20px;
+    }
+
+    .modal-content.modal-wide { max-width: 860px; }
+    .bibliography-toolbar, .bibliography-item-fields {
+        display: grid;
+        grid-template-columns: repeat(5, minmax(90px, 1fr));
+        gap: 10px;
+    }
+    .bibliography-toolbar { margin-bottom: 12px; }
+    .bibliography-toolbar textarea, .bibliography-item-fields textarea {
+        grid-column: 1 / -1;
+        min-height: 70px;
+        resize: vertical;
+    }
+    .bibliography-list {
+        display: grid;
+        gap: 10px;
+        max-height: 320px;
+        overflow-y: auto;
+    }
+    .bibliography-item {
+        border: 1px solid #e4e6ef;
+        border-radius: 8px;
+        padding: 12px;
+        background: #fff;
+    }
+    .bibliography-item-actions {
+        display: flex;
+        justify-content: flex-end;
+        gap: 8px;
+        margin-top: 10px;
     }
 
 </style>
@@ -585,7 +616,6 @@
                         <th class="col-pedagogy">Démarche pédagogique</th>
                         <th class="col-assessment">Épreuve</th>
                         <th class="col-profile">Profil Professeur</th>
-                        <th class="col-bibliographie">Bibliographie</th>
                     </tr>
                 </thead>
                 <tbody id="modulesList">
@@ -620,7 +650,6 @@
             
             <input type="text" id="newModulePedagogy" class="form-control" placeholder="Démarche pédagogique">
             <input type="text" id="newModuleAssessment" class="form-control" placeholder="Type d'épreuve">
-            <input type="text" id="newModuleBibliographie" class="form-control" placeholder="Bibliographie" style="grid-column: 1 / -1;">
             
             <button type="button" class="btn btn-primary" onclick="addModule()" style="grid-column: 1 / -1; justify-content: center; margin-top: 10px;">Enregistrer le Module</button>
         </div>
@@ -651,9 +680,31 @@
             
             <input type="text" id="editModulePedagogy" class="form-control" placeholder="Démarche pédagogique">
             <input type="text" id="editModuleAssessment" class="form-control" placeholder="Type d'épreuve">
-            <input type="text" id="editModuleBibliographie" class="form-control" placeholder="Bibliographie" style="grid-column: 1 / -1;">
             
             <button type="button" id="btnSubmitEditModule" class="btn btn-primary" onclick="submitEditModule()" style="grid-column: 1 / -1; justify-content: center; margin-top: 10px;">Enregistrer les modifications</button>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Bibliographie -->
+<div id="bibliographyModal" class="modal-overlay">
+    <div class="modal-content modal-wide">
+        <div class="modal-header">
+            <h3 id="bibliographyModalTitle">GÃ©rer la bibliographie</h3>
+            <button type="button" class="modal-close" onclick="closeBibliographyModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <input type="hidden" id="bibliographyModuleId">
+            <div class="bibliography-toolbar">
+                <input type="text" id="newBibliographyAuthor" class="form-control" placeholder="Auteur">
+                <input type="text" id="newBibliographyTitle" class="form-control" placeholder="Titre">
+                <input type="text" id="newBibliographyPublisher" class="form-control" placeholder="Ã‰diteur">
+                <input type="text" id="newBibliographyYear" class="form-control" placeholder="AnnÃ©e">
+                <input type="text" id="newBibliographyPages" class="form-control" placeholder="Pages">
+                <textarea id="newBibliographyRawText" class="form-control" placeholder="Texte brut"></textarea>
+                <button type="button" class="btn btn-primary" onclick="addBibliography()" style="grid-column: 1 / -1; justify-content: center;">Ajouter l'ouvrage</button>
+            </div>
+            <div id="bibliographyList" class="bibliography-list"></div>
         </div>
     </div>
 </div>
@@ -670,6 +721,8 @@
     const btnAddModule = document.getElementById('btnAddModule');
     const addModuleModal = document.getElementById('addModuleModal');
     const editModuleModal = document.getElementById('editModuleModal');
+    const bibliographyModal = document.getElementById('bibliographyModal');
+    const bibliographyList = document.getElementById('bibliographyList');
 
     if(referentielSelect) {
         referentielSelect.addEventListener('change', function() {
@@ -731,14 +784,14 @@
     }
 
     function fetchModules(refId) {
-        modulesList.innerHTML = '<tr><td colspan="7" style="text-align: center; color: #a1a5b7; padding: 20px;">Chargement...</td></tr>';
+        modulesList.innerHTML = '<tr><td colspan="9" style="text-align: center; color: #a1a5b7; padding: 20px;">Chargement...</td></tr>';
         
         fetch(`/settings/${refId}/modules`)
             .then(response => response.json())
             .then(data => {
                 modulesList.innerHTML = '';
                 if (data.length === 0) {
-                    modulesList.innerHTML = '<tr><td colspan="8" style="text-align: center; color: #a1a5b7; padding: 20px;">Aucun module trouvé pour ce référentiel.</td></tr>';
+                    modulesList.innerHTML = '<tr><td colspan="9" style="text-align: center; color: #a1a5b7; padding: 20px;">Aucun module trouvé pour ce référentiel.</td></tr>';
                     
                     // Enable extraction button
                     const selectedOption = referentielSelect.options[referentielSelect.selectedIndex];
@@ -823,21 +876,23 @@
                         <td class="col-level" style="left: ${thLevel.style.left}; color: #7e8299;">${module.level || '-'}</td>
                         <td class="col-duration" style="left: ${thDuration.style.left}; color: #7e8299;">${module.duration ? module.duration + 'h' : '-'}</td>
                         <td class="col-actions" style="left: ${thActions.style.left};">
-                            <button class="btn-icon btn-icon-edit" title="Modifier" onclick='editModule(${JSON.stringify(module).replace(/'/g, "&#39;")})' style="display: inline-flex; margin: 0 auto;">
+                            <button class="btn-icon btn-icon-edit" title="Modifier" onclick='editModule(${JSON.stringify(module).replace(/'/g, "&#39;")})' style="display: inline-flex;">
                                 <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>
+                            </button>
+                            <button class="btn-icon btn-icon-view" title="GÃ©rer la bibliographie (${module.bibliographies_count || 0})" onclick='openBibliographyModal(${module.id}, ${JSON.stringify(module.title || '').replace(/'/g, "&#39;")})' style="display: inline-flex;">
+                                <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M18 2H6c-1.1 0-2 .9-2 2v17c0 .55.45 1 1 1 .19 0 .37-.05.54-.16L12 18l6.46 3.84c.17.11.35.16.54.16.55 0 1-.45 1-1V4c0-1.1-.9-2-2-2zm0 17.23-6-3.56-6 3.56V4h12v15.23z"/></svg>
                             </button>
                         </td>
                         <td class="col-pedagogy" style="color: #7e8299;">${module.pedagogical_approach || '-'}</td>
                         <td class="col-assessment" style="color: #7e8299;">${module.assessment_type || '-'}</td>
                         <td class="col-profile" style="color: #7e8299;">${module.teacher_profile || '-'}</td>
-                        <td class="col-bibliographie" style="color: #7e8299;">${module.bibliographie || '-'}</td>
                     `;
                     tr.innerHTML = html;
                     modulesList.appendChild(tr);
                 });
             })
             .catch(err => {
-                modulesList.innerHTML = '<tr><td colspan="8" style="text-align: center; color: #f1416c; padding: 20px;">Erreur de chargement des modules.</td></tr>';
+                modulesList.innerHTML = '<tr><td colspan="9" style="text-align: center; color: #f1416c; padding: 20px;">Erreur de chargement des modules.</td></tr>';
             });
     }
 
@@ -851,7 +906,6 @@
         document.getElementById('editModuleProfile').value = module.teacher_profile || '';
         document.getElementById('editModulePedagogy').value = module.pedagogical_approach || '';
         document.getElementById('editModuleAssessment').value = module.assessment_type || '';
-        document.getElementById('editModuleBibliographie').value = module.bibliographie || '';
         
         editModuleModal.style.display = 'flex';
         setTimeout(() => document.getElementById('editModuleTitle').focus(), 100);
@@ -871,7 +925,6 @@
         const profile = document.getElementById('editModuleProfile').value.trim();
         const pedagogy = document.getElementById('editModulePedagogy').value.trim();
         const assessment = document.getElementById('editModuleAssessment').value.trim();
-        const bibliographie = document.getElementById('editModuleBibliographie').value.trim();
 
         if (!title) {
             alert("Le titre est obligatoire.");
@@ -898,8 +951,7 @@
                 level: level,
                 teacher_profile: profile,
                 pedagogical_approach: pedagogy,
-                assessment_type: assessment,
-                bibliographie: bibliographie
+                assessment_type: assessment
             })
         })
         .then(response => {
@@ -929,7 +981,6 @@
         const profile = document.getElementById('newModuleProfile').value.trim();
         const pedagogy = document.getElementById('newModulePedagogy').value.trim();
         const assessment = document.getElementById('newModuleAssessment').value.trim();
-        const bibliographie = document.getElementById('newModuleBibliographie').value.trim();
 
         if (!refId || !title) {
             alert("Le titre est obligatoire.");
@@ -945,7 +996,6 @@
         document.getElementById('newModuleProfile').value = '';
         document.getElementById('newModulePedagogy').value = '';
         document.getElementById('newModuleAssessment').value = '';
-        document.getElementById('newModuleBibliographie').value = '';
         
         document.getElementById('newModuleTitle').disabled = true;
 
@@ -964,8 +1014,7 @@
                 level: level,
                 teacher_profile: profile,
                 pedagogical_approach: pedagogy,
-                assessment_type: assessment,
-                bibliographie: bibliographie
+                assessment_type: assessment
             })
         })
         .then(response => {
@@ -1006,7 +1055,157 @@
         document.getElementById('newModuleProfile').value = '';
         document.getElementById('newModulePedagogy').value = '';
         document.getElementById('newModuleAssessment').value = '';
-        document.getElementById('newModuleBibliographie').value = '';
+    }
+
+    function openBibliographyModal(moduleId, moduleTitle) {
+        document.getElementById('bibliographyModuleId').value = moduleId;
+        document.getElementById('bibliographyModalTitle').textContent = `Bibliographie - ${moduleTitle || 'Module'}`;
+        resetBibliographyForm();
+        bibliographyModal.style.display = 'flex';
+        fetchBibliographies(moduleId);
+    }
+
+    function closeBibliographyModal() {
+        bibliographyModal.style.display = 'none';
+        bibliographyList.innerHTML = '';
+        resetBibliographyForm();
+    }
+
+    function resetBibliographyForm() {
+        document.getElementById('newBibliographyAuthor').value = '';
+        document.getElementById('newBibliographyTitle').value = '';
+        document.getElementById('newBibliographyPublisher').value = '';
+        document.getElementById('newBibliographyYear').value = '';
+        document.getElementById('newBibliographyPages').value = '';
+        document.getElementById('newBibliographyRawText').value = '';
+    }
+
+    function fetchBibliographies(moduleId) {
+        bibliographyList.innerHTML = '<div style="text-align: center; color: #a1a5b7; padding: 15px;">Chargement...</div>';
+
+        fetch(`/settings/modules/${moduleId}/bibliographies`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.length === 0) {
+                    bibliographyList.innerHTML = '<div style="text-align: center; color: #a1a5b7; padding: 15px;">Aucun ouvrage pour ce module.</div>';
+                    return;
+                }
+
+                bibliographyList.innerHTML = '';
+                data.forEach(item => bibliographyList.appendChild(renderBibliographyItem(item)));
+            })
+            .catch(() => {
+                bibliographyList.innerHTML = '<div style="text-align: center; color: #f1416c; padding: 15px;">Erreur de chargement.</div>';
+            });
+    }
+
+    function renderBibliographyItem(item) {
+        const wrapper = document.createElement('div');
+        wrapper.className = 'bibliography-item';
+        wrapper.id = `bibliography-${item.id}`;
+        wrapper.innerHTML = `
+            <div class="bibliography-item-fields">
+                <input type="text" class="form-control" data-field="author" value="${escapeHtml(item.author || '')}" placeholder="Auteur">
+                <input type="text" class="form-control" data-field="title" value="${escapeHtml(item.title || '')}" placeholder="Titre">
+                <input type="text" class="form-control" data-field="publisher" value="${escapeHtml(item.publisher || '')}" placeholder="Editeur">
+                <input type="text" class="form-control" data-field="year" value="${escapeHtml(item.year || '')}" placeholder="Annee">
+                <input type="text" class="form-control" data-field="pages" value="${escapeHtml(item.pages || '')}" placeholder="Pages">
+                <textarea class="form-control" data-field="raw_text" placeholder="Texte brut">${escapeHtml(item.raw_text || '')}</textarea>
+            </div>
+            <div class="bibliography-item-actions">
+                <button type="button" class="btn btn-secondary" onclick="updateBibliography(${item.id})" style="padding: 8px 14px; font-size: 0.85rem;">Modifier</button>
+                <button type="button" class="btn btn-danger" onclick="deleteBibliography(${item.id})" style="padding: 8px 14px; font-size: 0.85rem;">Supprimer</button>
+            </div>
+        `;
+
+        return wrapper;
+    }
+
+    function getBibliographyPayload(prefix) {
+        if (prefix === 'new') {
+            return {
+                author: document.getElementById('newBibliographyAuthor').value.trim(),
+                title: document.getElementById('newBibliographyTitle').value.trim(),
+                publisher: document.getElementById('newBibliographyPublisher').value.trim(),
+                year: document.getElementById('newBibliographyYear').value.trim(),
+                pages: document.getElementById('newBibliographyPages').value.trim(),
+                raw_text: document.getElementById('newBibliographyRawText').value.trim(),
+            };
+        }
+
+        const item = document.getElementById(`bibliography-${prefix}`);
+        const payload = {};
+        item.querySelectorAll('[data-field]').forEach(input => {
+            payload[input.dataset.field] = input.value.trim();
+        });
+
+        return payload;
+    }
+
+    function addBibliography() {
+        const moduleId = document.getElementById('bibliographyModuleId').value;
+
+        fetch(`/settings/modules/${moduleId}/bibliographies`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                'Accept': 'application/json'
+            },
+            body: JSON.stringify(getBibliographyPayload('new'))
+        })
+        .then(response => {
+            if (!response.ok) throw new Error();
+            resetBibliographyForm();
+            fetchBibliographies(moduleId);
+            fetchModules(referentielSelect.value);
+        })
+        .catch(() => alert("Erreur lors de l'ajout de l'ouvrage."));
+    }
+
+    function updateBibliography(id) {
+        fetch(`/settings/bibliographies/${id}`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                'Accept': 'application/json'
+            },
+            body: JSON.stringify(getBibliographyPayload(id))
+        })
+        .then(response => {
+            if (!response.ok) throw new Error();
+        })
+        .catch(() => alert("Erreur lors de la modification de l'ouvrage."));
+    }
+
+    function deleteBibliography(id) {
+        if (!confirm('Supprimer cet ouvrage ?')) return;
+
+        const moduleId = document.getElementById('bibliographyModuleId').value;
+
+        fetch(`/settings/bibliographies/${id}`, {
+            method: 'DELETE',
+            headers: {
+                'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                'Accept': 'application/json'
+            }
+        })
+        .then(response => {
+            if (!response.ok) throw new Error();
+            fetchBibliographies(moduleId);
+            fetchModules(referentielSelect.value);
+        })
+        .catch(() => alert("Erreur lors de la suppression de l'ouvrage."));
+    }
+
+    function escapeHtml(value) {
+        return String(value)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#039;');
     }
 
     function filterModules() {
@@ -1042,6 +1241,9 @@
         }
         if (e.target === editModuleModal) {
             closeEditModal();
+        }
+        if (e.target === bibliographyModal) {
+            closeBibliographyModal();
         }
     });
 </script>

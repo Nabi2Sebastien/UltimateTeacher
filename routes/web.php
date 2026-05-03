@@ -17,6 +17,9 @@ Route::delete('/settings/{referentiel}', [ReferentielController::class, 'destroy
 Route::get('/settings/{referentiel}/modules', [ReferentielController::class, 'getModules'])->name('settings.modules.get');
 Route::post('/settings/{referentiel}/modules', [ReferentielController::class, 'storeModule'])->name('settings.modules.store');
 Route::put('/settings/modules/{module}', [ReferentielController::class, 'updateModule'])->name('settings.modules.update');
+Route::get('/settings/modules/{module}/bibliographies', [ReferentielController::class, 'getBibliographies'])->name('settings.modules.bibliographies.index');
+Route::post('/settings/modules/{module}/bibliographies', [ReferentielController::class, 'storeBibliographie'])->name('settings.modules.bibliographies.store');
+Route::put('/settings/bibliographies/{bibliographie}', [ReferentielController::class, 'updateBibliographie'])->name('settings.bibliographies.update');
+Route::delete('/settings/bibliographies/{bibliographie}', [ReferentielController::class, 'destroyBibliographie'])->name('settings.bibliographies.delete');
 Route::post('/settings/{referentiel}/extract', [ReferentielController::class, 'extract'])->name('settings.extract');
-
 

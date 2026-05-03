@@ -35,6 +35,26 @@ class BepAccReferentielExtractor
                 continue;
             }
 
+            if ($currentModule && $pendingField === 'bibliographies' && $this->isBibliographyContinuation($line)) {
+                $currentModule['bibliographies'] = $this->appendBibliographyLine($currentModule['bibliographies'] ?? [], $line);
+
+                continue;
+            }
+
+            if ($pendingField === 'bibliographies') {
+                $pendingField = null;
+            }
+
+            if ($currentModule && preg_match('/^BIBLIOGRAPHIE\s*:?\s*(.*)$/ui', $line, $matches)) {
+                $pendingField = 'bibliographies';
+
+                if (!blank($matches[1] ?? '')) {
+                    $currentModule['bibliographies'] = $this->appendBibliographyLine($currentModule['bibliographies'] ?? [], $matches[1]);
+                }
+
+                continue;
+            }
+
             if (preg_match('/^\s*VI[.\-]\s*MODULES DE FORMATION\s*$/ui', $line)) {
                 $insideModulesSection = true;
 
@@ -198,6 +218,13 @@ class BepAccReferentielExtractor
                             }
                         }
                     }
+
+                    if (!empty($module['bibliographies'])) {
+                        $uniqueModules[$numero]['bibliographies'] = array_values(array_unique(array_merge(
+                            $uniqueModules[$numero]['bibliographies'] ?? [],
+                            $module['bibliographies']
+                        )));
+                    }
                 }
             } else {
                 $uniqueModules[] = $module;
@@ -235,6 +262,34 @@ class BepAccReferentielExtractor
         }
 
         return null;
+    }
+
+    private function isBibliographyContinuation(string $line): bool
+    {
+        if ($line === '') {
+            return false;
+        }
+
+        if (preg_match('/^(?:MODULES?|SOUS[\s-]*MODULES?|TITRE DU MODULE|CODE|DUR(?:Ã‰|E|EE)E|DUREE|NIVEAU|CLASSE|OBJECTIF|PLACE DANS LE REFERENTIEL|RÃƒâ€LE ET IMPORTANCE|ROLE ET IMPORTANCE|CONTENUS ESSENTIELS|TYPE(?:S)?\s+D|D(?:Ã‰|E)MARCHES?|TABLEAU DE REPARTITION|[IVX]+\.)/ui', $line)) {
+            return false;
+        }
+
+        if (preg_match('/^(?:Inspection de l[\'â€™]?enseignement|Page\s+\d+|NB\s*:)/ui', $line)) {
+            return false;
+        }
+
+        return true;
+    }
+
+    private function appendBibliographyLine(array $bibliographies, string $line): array
+    {
+        $line = $this->normalizeInlineText($line);
+
+        if ($line !== '') {
+            $bibliographies[] = $line;
+        }
+
+        return $bibliographies;
     }
 
     private function isFieldContinuation(string $line): bool
@@ -298,6 +353,7 @@ class BepAccReferentielExtractor
             'teacher_profile' => null,
             'pedagogical_approach' => null,
             'assessment_type' => null,
+            'bibliographies' => [],
         ];
     }
 

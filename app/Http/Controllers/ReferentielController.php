@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Bibliographie;
 use App\Models\Module;
 use App\Models\Referentiel;
 use App\Services\Referentiels\BepAccReferentielExtractor;
@@ -74,7 +75,18 @@ class ReferentielController extends Controller
                 : $this->parseModulesFromText($text);
 
             foreach ($modules as $module) {
-                $referentiel->modules()->create($module);
+                $bibliographies = $module['bibliographies'] ?? [];
+                unset($module['bibliographies']);
+
+                $createdModule = $referentiel->modules()->create($module);
+
+                foreach ($bibliographies as $bibliographie) {
+                    $createdModule->bibliographies()->create([
+                        'raw_text' => is_array($bibliographie)
+                            ? ($bibliographie['raw_text'] ?? null)
+                            : (string) $bibliographie,
+                    ]);
+                }
             }
         } catch (\Throwable $e) {
             Log::error('Erreur lors de l extraction du document', [
@@ -889,7 +901,11 @@ PS;
 
     public function getModules(Referentiel $referentiel)
     {
-        return response()->json($referentiel->modules);
+        return response()->json(
+            $referentiel->modules()
+                ->withCount('bibliographies')
+                ->get()
+        );
     }
 
     public function storeModule(Request $request, Referentiel $referentiel)
@@ -903,7 +919,6 @@ PS;
             'teacher_profile' => 'nullable|string|max:255',
             'pedagogical_approach' => 'nullable|string|max:255',
             'assessment_type' => 'nullable|string|max:255',
-            'bibliographie' => 'nullable|string|max:255',
         ]);
 
         $module = $referentiel->modules()->create([
@@ -915,7 +930,6 @@ PS;
             'teacher_profile' => $request->teacher_profile,
             'pedagogical_approach' => $request->pedagogical_approach,
             'assessment_type' => $request->assessment_type,
-            'bibliographie' => $request->bibliographie,
         ]);
 
         return response()->json($module, 201);
@@ -932,7 +946,6 @@ PS;
             'teacher_profile' => 'nullable|string|max:255',
             'pedagogical_approach' => 'nullable|string|max:255',
             'assessment_type' => 'nullable|string|max:255',
-            'bibliographie' => 'nullable|string|max:255',
         ]);
 
         $module->update([
@@ -944,10 +957,53 @@ PS;
             'teacher_profile' => $request->teacher_profile,
             'pedagogical_approach' => $request->pedagogical_approach,
             'assessment_type' => $request->assessment_type,
-            'bibliographie' => $request->bibliographie,
         ]);
 
         return response()->json($module);
+    }
+
+    public function getBibliographies(Module $module)
+    {
+        return response()->json($module->bibliographies()->latest()->get());
+    }
+
+    public function storeBibliographie(Request $request, Module $module)
+    {
+        $data = $request->validate([
+            'author' => 'nullable|string|max:255',
+            'title' => 'nullable|string|max:255',
+            'publisher' => 'nullable|string|max:255',
+            'year' => 'nullable|string|max:50',
+            'pages' => 'nullable|string|max:100',
+            'raw_text' => 'nullable|string',
+        ]);
+
+        $bibliographie = $module->bibliographies()->create($data);
+
+        return response()->json($bibliographie, 201);
+    }
+
+    public function updateBibliographie(Request $request, Bibliographie $bibliographie)
+    {
+        $data = $request->validate([
+            'author' => 'nullable|string|max:255',
+            'title' => 'nullable|string|max:255',
+            'publisher' => 'nullable|string|max:255',
+            'year' => 'nullable|string|max:50',
+            'pages' => 'nullable|string|max:100',
+            'raw_text' => 'nullable|string',
+        ]);
+
+        $bibliographie->update($data);
+
+        return response()->json($bibliographie);
+    }
+
+    public function destroyBibliographie(Bibliographie $bibliographie)
+    {
+        $bibliographie->delete();
+
+        return response()->json(['success' => true]);
     }
 
     public function extract(Request $request, Referentiel $referentiel)
