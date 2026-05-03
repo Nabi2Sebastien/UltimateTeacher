@@ -309,15 +309,35 @@ class BepAccReferentielExtractor
         // Joindre toutes les lignes avec un séparateur pour traiter le texte comme un bloc
         $fullText = implode(' ', array_map(fn ($line) => $this->normalizeInlineText($line), $lines));
         
-        // Diviser sur les séparateurs principaux : tirets ou points-virgules suivis d'un nouveau livre
-        // Pattern: "- " ou "; - " ou juste ";" ou une lettre avec point (a., b., c.)
-        $books = preg_split('/\s*(?:\-\s*|\;\s*\-\s*|\;(?=\s*[A-Z]|[a-z]\.)|(?<=\d[ap])\s*;\s*)/u', $fullText);
+        // Diviser sur les séparateurs de livres:
+        // Les formats supportés:
+        // 1. Numéros avec point: 1., 2., 3., 9., etc.
+        // 2. Lettres avec point: a., b., c., d., etc.
+        // 3. Tirets: "- " (séparateur principal entre les livres)
+        // 4. Points-virgules: "; "
+        // Pattern: divise avant un numéro/lettre suivi d'un point et espace,
+        // ou avant un tiret suivi d'espace et une majuscule
+        $books = preg_split('/\s+(?=\d+\.\s+|[a-z]\.\s+|\-\s+[A-Z]|;\s+)/u', $fullText);
         
         foreach ($books as $book) {
             $book = $this->normalizeInlineText(trim($book));
-            if ($book !== '' && strlen($book) > 3) {
-                // Enlever les puces ou lettres initiales (a., b., -)
-                $book = preg_replace('/^[\s\-a-z]\.\s+/', '', $book) ?? $book;
+            if ($book === '' || strlen($book) < 5) {
+                continue;
+            }
+            
+            // Supprimer les catégories (Windows, Traitement de textes, Tableurs, Internet, etc.)
+            if (preg_match('/^(?:Windows|Traitement\s+de\s+textes?|Tableurs?|Internet|Applications?|Bureautique|Revues?\s+périodiques?)\s*-?\s*$/ui', $book)) {
+                continue;
+            }
+            
+            // Enlever les puces ou numéros/lettres initiales (1., a., b., c., etc. ou -)
+            $book = preg_replace('/^\d+\.\s+/', '', $book) ?? $book;
+            $book = preg_replace('/^[a-z]\.\s+/', '', $book) ?? $book;
+            $book = preg_replace('/^\-\s+/', '', $book) ?? $book;
+            $book = preg_replace('/^;\s*\-?\s*/', '', $book) ?? $book;
+            $book = $this->normalizeInlineText(trim($book));
+            
+            if ($book !== '' && strlen($book) > 5) {
                 $entry = $this->parseBibliographyEntry([$book]);
                 if (!blank($entry['raw_text'] ?? null)) {
                     $entries[] = $entry;
