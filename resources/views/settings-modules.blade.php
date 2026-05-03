@@ -575,6 +575,7 @@
                         <th class="col-pedagogy">Démarche pédagogique</th>
                         <th class="col-assessment">Épreuve</th>
                         <th class="col-profile">Profil Professeur</th>
+                        <th class="col-bibliographie">Bibliographie</th>
                     </tr>
                 </thead>
                 <tbody id="modulesList">
@@ -608,6 +609,7 @@
             
             <input type="text" id="newModulePedagogy" class="form-control" placeholder="Démarche pédagogique">
             <input type="text" id="newModuleAssessment" class="form-control" placeholder="Type d'épreuve">
+            <input type="text" id="newModuleBibliographie" class="form-control" placeholder="Bibliographie" style="grid-column: 1 / -1;">
             
             <button type="button" class="btn btn-primary" onclick="addModule()" style="grid-column: 1 / -1; justify-content: center; margin-top: 10px;">Enregistrer le Module</button>
         </div>
@@ -637,6 +639,7 @@
             
             <input type="text" id="editModulePedagogy" class="form-control" placeholder="Démarche pédagogique">
             <input type="text" id="editModuleAssessment" class="form-control" placeholder="Type d'épreuve">
+            <input type="text" id="editModuleBibliographie" class="form-control" placeholder="Bibliographie" style="grid-column: 1 / -1;">
             
             <button type="button" id="btnSubmitEditModule" class="btn btn-primary" onclick="submitEditModule()" style="grid-column: 1 / -1; justify-content: center; margin-top: 10px;">Enregistrer les modifications</button>
         </div>
@@ -761,6 +764,7 @@
                         <td class="col-pedagogy" style="color: #7e8299;">${module.pedagogical_approach || '-'}</td>
                         <td class="col-assessment" style="color: #7e8299;">${module.assessment_type || '-'}</td>
                         <td class="col-profile" style="color: #7e8299;">${module.teacher_profile || '-'}</td>
+                        <td class="col-bibliographie" style="color: #7e8299;">${module.bibliographie || '-'}</td>
                     `;
                     modulesList.appendChild(tr);
                 });
@@ -779,6 +783,7 @@
         document.getElementById('editModuleProfile').value = module.teacher_profile || '';
         document.getElementById('editModulePedagogy').value = module.pedagogical_approach || '';
         document.getElementById('editModuleAssessment').value = module.assessment_type || '';
+        document.getElementById('editModuleBibliographie').value = module.bibliographie || '';
         
         editModuleModal.style.display = 'flex';
         setTimeout(() => document.getElementById('editModuleTitle').focus(), 100);
@@ -797,6 +802,7 @@
         const profile = document.getElementById('editModuleProfile').value.trim();
         const pedagogy = document.getElementById('editModulePedagogy').value.trim();
         const assessment = document.getElementById('editModuleAssessment').value.trim();
+        const bibliographie = document.getElementById('editModuleBibliographie').value.trim();
 
         if (!title) {
             alert("Le titre est obligatoire.");
@@ -822,7 +828,8 @@
                 level: level,
                 teacher_profile: profile,
                 pedagogical_approach: pedagogy,
-                assessment_type: assessment
+                assessment_type: assessment,
+                bibliographie: bibliographie
             })
         })
         .then(response => {
@@ -851,6 +858,7 @@
         const profile = document.getElementById('newModuleProfile').value.trim();
         const pedagogy = document.getElementById('newModulePedagogy').value.trim();
         const assessment = document.getElementById('newModuleAssessment').value.trim();
+        const bibliographie = document.getElementById('newModuleBibliographie').value.trim();
 
         if (!refId || !title) {
             alert("Le titre est obligatoire.");
@@ -865,6 +873,7 @@
         document.getElementById('newModuleProfile').value = '';
         document.getElementById('newModulePedagogy').value = '';
         document.getElementById('newModuleAssessment').value = '';
+        document.getElementById('newModuleBibliographie').value = '';
         
         document.getElementById('newModuleTitle').disabled = true;
 
@@ -882,7 +891,8 @@
                 level: level,
                 teacher_profile: profile,
                 pedagogical_approach: pedagogy,
-                assessment_type: assessment
+                assessment_type: assessment,
+                bibliographie: bibliographie
             })
         })
         .then(response => {
@@ -922,6 +932,7 @@
         document.getElementById('newModuleProfile').value = '';
         document.getElementById('newModulePedagogy').value = '';
         document.getElementById('newModuleAssessment').value = '';
+        document.getElementById('newModuleBibliographie').value = '';
     }
 
     function filterModules() {
