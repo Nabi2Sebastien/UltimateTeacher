@@ -237,7 +237,8 @@
                     `;
                     
                     modules.forEach((module, index) => {
-                        html += `<tr><td><strong>${index + 1}</strong></td>`;
+                        const num = module.numero || (index + 1);
+                        html += `<tr><td><strong>${num}</strong></td>`;
                         
                         // Ajouter seulement les données des colonnes qui existent
                         columnsWithData.forEach(column => {

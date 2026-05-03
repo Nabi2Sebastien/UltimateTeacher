@@ -55,7 +55,7 @@ class BepAccReferentielExtractor
 
             if (preg_match('/^MODULE\s+N(?:[Â°Âºo]|Ã‚Â°|Ã‚Âº)?\s*0*([\d\w]+)\s*:\s*(.+)$/ui', $line, $matches)) {
                 $this->pushParsedModule($modules, $currentModule);
-                $currentModule = $this->makeEmptyModule('M' . $matches[1], $matches[2]);
+                $currentModule = $this->makeEmptyModule($matches[1], $matches[2]);
                 $pendingField = null;
 
                 continue;
@@ -63,7 +63,7 @@ class BepAccReferentielExtractor
 
             if (preg_match('/^MODULES?\s+0*([0-9]+(?:\.[0-9]+)?|[A-Z][0-9]+)(?:\s+SUITE)?\s*:\s*(.+)$/ui', $line, $matches)) {
                 $this->pushParsedModule($modules, $currentModule);
-                $currentModule = $this->makeEmptyModule('M' . $matches[1], $matches[2]);
+                $currentModule = $this->makeEmptyModule($matches[1], $matches[2]);
                 $pendingField = null;
 
                 continue;
@@ -72,11 +72,11 @@ class BepAccReferentielExtractor
             if (preg_match('/^SOUS[\s-]*MODULES?\s+0*([0-9]+)\s*\.?\s*0*([0-9]+)(?:\s*[:\s]\s*(.+))?\s*$/ui', $line, $matches)) {
                 $subModuleNumber = $matches[1] . '.' . $matches[2];
                 $subModuleTitle = $matches[3] ?? '';
-                $parentCode = 'M' . $matches[1];
+                $parentCode = $matches[1];
                 $parentModuleTitle = $this->findParentModuleTitle($modules, $currentModule, $parentCode);
 
                 $this->pushParsedModule($modules, $currentModule);
-                $currentModule = $this->makeEmptyModule('M' . $subModuleNumber, $subModuleTitle);
+                $currentModule = $this->makeEmptyModule($subModuleNumber, $subModuleTitle);
                 $currentModule['parent_module'] = $parentModuleTitle;
                 $pendingField = null;
 
@@ -100,7 +100,7 @@ class BepAccReferentielExtractor
                 }
 
                 if (!$currentModule) {
-                    $currentModule = $this->makeEmptyModule('M' . (count($modules) + 1));
+                    $currentModule = $this->makeEmptyModule((string) (count($modules) + 1));
                 }
 
                 $currentModule['title'] = $matches[1];
@@ -113,7 +113,7 @@ class BepAccReferentielExtractor
             }
 
             if (preg_match('/(?:Code du module|CODE DU MODULE|CODE)\s*:\s*([A-Z0-9][A-Z0-9\s-]*?)(?:\s+Dur(?:Ã©e|ee|e)\s*:|\s*$)/ui', $line, $matches)) {
-                $currentModule['code'] = $matches[1];
+                $currentModule['code'] = null; // Ignore code for Bep Acc
             }
 
             if (preg_match('/^(?:\d+\s*[-.]?\s*)?(?:DUR(?:Ã‰|E|EE)(?:E)?(?:\s+DU\s+MODULE)?|DURÃ‰E\s+DU\s+MODULE|DUREE\s+DU\s+MODULE)\s*:\s*(\d+)/ui', $line, $matches)) {
@@ -144,12 +144,12 @@ class BepAccReferentielExtractor
     private function findParentModuleTitle(array $modules, ?array $currentModule, string $parentCode): ?string
     {
         foreach ($modules as $module) {
-            if (($module['code'] ?? '') === $parentCode) {
+            if (($module['numero'] ?? '') === $parentCode) {
                 return $module['title'] ?? null;
             }
         }
 
-        if ($currentModule !== null && ($currentModule['code'] ?? '') === $parentCode) {
+        if ($currentModule !== null && ($currentModule['numero'] ?? '') === $parentCode) {
             return $currentModule['title'] ?? null;
         }
 
@@ -205,10 +205,11 @@ class BepAccReferentielExtractor
         return trim($value, " \t\n\r\0\x0B,;");
     }
 
-    private function makeEmptyModule(?string $code = null, ?string $title = null): array
+    private function makeEmptyModule(?string $numero = null, ?string $title = null): array
     {
         return [
-            'code' => $this->normalizeInlineText((string) $code),
+            'numero' => $this->normalizeInlineText((string) $numero),
+            'code' => null,
             'parent_module' => null,
             'title' => $this->normalizeInlineText((string) $title),
             'duration' => null,
@@ -221,6 +222,7 @@ class BepAccReferentielExtractor
 
     private function normalizeParsedModule(array $module): array
     {
+        $module['numero'] = $this->normalizeInlineText((string) ($module['numero'] ?? ''));
         $module['code'] = $this->normalizeInlineText((string) ($module['code'] ?? ''));
         $module['parent_module'] = $this->normalizeInlineText((string) ($module['parent_module'] ?? ''));
         $module['title'] = $this->normalizeInlineText((string) ($module['title'] ?? ''));
@@ -228,6 +230,7 @@ class BepAccReferentielExtractor
         $module['pedagogical_approach'] = $this->normalizeInlineText((string) ($module['pedagogical_approach'] ?? ''));
         $module['assessment_type'] = $this->normalizeInlineText((string) ($module['assessment_type'] ?? ''));
 
+        $module['numero'] = $module['numero'] !== '' ? $module['numero'] : null;
         $module['code'] = $module['code'] !== '' ? (preg_replace('/\s+/', ' ', $module['code']) ?? $module['code']) : null;
         $module['parent_module'] = $module['parent_module'] !== '' ? $module['parent_module'] : null;
         $module['title'] = $module['title'] !== '' ? $module['title'] : null;
