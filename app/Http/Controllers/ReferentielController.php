@@ -353,7 +353,13 @@ PS;
             if (preg_match('/^MODULE\s+N(?:[°ºo]|Â°|Âº)?\s*0*([\d\w]+)(?:\s*[:\s]\s*(.+))?$/ui', $line, $matches)) {
                 $this->pushParsedModule($modules, $currentModule);
                 $title = $matches[2] ?? '';
+                $duration = null;
+                if (preg_match('/\(?\s*(\d+)\s*(?:[hH]|heures?)\s*\)?$/ui', $title, $durMatches)) {
+                    $duration = (int) $durMatches[1];
+                    $title = trim(str_replace($durMatches[0], '', $title));
+                }
                 $currentModule = $this->makeEmptyModule('M' . $matches[1], $title);
+                if ($duration) $currentModule['duration'] = $duration;
                 $pendingField = null;
                 $moduleCounter = is_numeric($matches[1]) ? (int) $matches[1] : $moduleCounter;
 
@@ -387,7 +393,13 @@ PS;
             if (preg_match('/^MODULES?\s+0*([0-9]+(?:\.[0-9]+)?|[A-Z][0-9]+)(?:\s+SUITE)?(?:\s*[:\s]\s*(.+))?$/ui', $line, $matches)) {
                 $this->pushParsedModule($modules, $currentModule);
                 $title = $matches[2] ?? '';
+                $duration = null;
+                if (preg_match('/\(?\s*(\d+)\s*(?:[hH]|heures?)\s*\)?$/ui', $title, $durMatches)) {
+                    $duration = (int) $durMatches[1];
+                    $title = trim(str_replace($durMatches[0], '', $title));
+                }
                 $currentModule = $this->makeEmptyModule('M' . $matches[1], $title);
+                if ($duration) $currentModule['duration'] = $duration;
                 $pendingField = null;
                 $moduleCounter = is_numeric($matches[1]) ? (int) $matches[1] : $moduleCounter;
 
@@ -399,6 +411,13 @@ PS;
             if (preg_match('/^SOUS[\s-]*MODULES?\s+0*([0-9]+)\s*\.?\s*0*([0-9]+)(?:\s*[:\s]\s*(.+))?\s*$/ui', $line, $matches)) {
                 $subModuleNumber = $matches[1] . '.' . $matches[2];
                 $subModuleTitle = $matches[3] ?? '';
+                
+                $duration = null;
+                if (preg_match('/\(?\s*(\d+)\s*(?:[hH]|heures?)\s*\)?$/ui', $subModuleTitle, $durMatches)) {
+                    $duration = (int) $durMatches[1];
+                    $subModuleTitle = trim(str_replace($durMatches[0], '', $subModuleTitle));
+                }
+
                 $parentNumber = $matches[1];
                 $parentCode = 'M' . $parentNumber;
 
@@ -416,6 +435,7 @@ PS;
 
                 $this->pushParsedModule($modules, $currentModule);
                 $currentModule = $this->makeEmptyModule('M' . $subModuleNumber, $subModuleTitle);
+                if ($duration) $currentModule['duration'] = $duration;
                 $currentModule['parent_module'] = $parentModuleTitle;
                 $pendingField = null;
 
@@ -479,11 +499,11 @@ PS;
                 $currentModule['code'] = $matches[1];
             }
 
-            if (preg_match('/^(?:\d+\s*[-.]?\s*)?(?:DUR(?:É|E|EE)(?:E)?(?:[^:]*))\s*:\s*(\d+)/ui', $line, $matches)) {
+            if (preg_match('/(?:DUR(?:É|E|EE)(?:E)?|VOLUME HORAIRE|TEMPS).*?(?:\s*[:\-]\s*|\s+)(\d+)\s*(?:[hH]|heures?|Heures?)/ui', $line, $matches)) {
                 $currentModule['duration'] = (int) $matches[1];
             }
 
-            if (preg_match('/^(?:\d+\s*[-.]?\s*)?NIVEAU(?:[^:]*)\s*:\s*(.+?)(?:\s+Volume|\s*$)/ui', $line, $matches)) {
+            if (preg_match('/^(?:\d+\s*[-.]?\s*)?(?:NIVEAU|CLASSE)(?:[^:\-]*)(?:\s*[:\-]\s*|\s+)(.+?)(?:\s+Volume|\s*$)/ui', $line, $matches)) {
                 $currentModule['level'] = $matches[1];
                 $pendingField = 'level';
             }

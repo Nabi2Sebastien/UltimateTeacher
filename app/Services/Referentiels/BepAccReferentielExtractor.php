@@ -53,10 +53,16 @@ class BepAccReferentielExtractor
                 continue;
             }
 
-            if (preg_match('/^MODULE\s+N(?:[Â°Âºo]|Ã‚Â°|Ã‚Âº)?\s*0*([\d\w]+)(?:\s*[:\s]\s*(.+))?$/ui', $line, $matches)) {
+            if (preg_match('/^MODULE\s+N(?:[Â°Âºo]|Â°|Ã‚Âº)?\s*0*([\d\w]+)(?:\s*[:\s]\s*(.+))?$/ui', $line, $matches)) {
                 $this->pushParsedModule($modules, $currentModule);
                 $title = $matches[2] ?? '';
+                $duration = null;
+                if (preg_match('/\(?\s*(\d+)\s*(?:[hH]|heures?)\s*\)?$/ui', $title, $durMatches)) {
+                    $duration = (int) $durMatches[1];
+                    $title = trim(str_replace($durMatches[0], '', $title));
+                }
                 $currentModule = $this->makeEmptyModule($matches[1], $title);
+                if ($duration) $currentModule['duration'] = $duration;
                 $pendingField = null;
 
                 continue;
@@ -65,7 +71,13 @@ class BepAccReferentielExtractor
             if (preg_match('/^MODULES?\s+0*([0-9]+(?:\.[0-9]+)?|[A-Z][0-9]+)(?:\s+SUITE)?(?:\s*[:\s]\s*(.+))?$/ui', $line, $matches)) {
                 $this->pushParsedModule($modules, $currentModule);
                 $title = $matches[2] ?? '';
+                $duration = null;
+                if (preg_match('/\(?\s*(\d+)\s*(?:[hH]|heures?)\s*\)?$/ui', $title, $durMatches)) {
+                    $duration = (int) $durMatches[1];
+                    $title = trim(str_replace($durMatches[0], '', $title));
+                }
                 $currentModule = $this->makeEmptyModule($matches[1], $title);
+                if ($duration) $currentModule['duration'] = $duration;
                 $pendingField = null;
 
                 continue;
@@ -74,11 +86,19 @@ class BepAccReferentielExtractor
             if (preg_match('/^SOUS[\s-]*MODULES?\s+0*([0-9]+)\s*\.?\s*0*([0-9]+)(?:\s*[:\s]\s*(.+))?\s*$/ui', $line, $matches)) {
                 $subModuleNumber = $matches[1] . '.' . $matches[2];
                 $subModuleTitle = $matches[3] ?? '';
+                
+                $duration = null;
+                if (preg_match('/\(?\s*(\d+)\s*(?:[hH]|heures?)\s*\)?$/ui', $subModuleTitle, $durMatches)) {
+                    $duration = (int) $durMatches[1];
+                    $subModuleTitle = trim(str_replace($durMatches[0], '', $subModuleTitle));
+                }
+
                 $parentCode = $matches[1];
                 $parentModuleTitle = $this->findParentModuleTitle($modules, $currentModule, $parentCode);
 
                 $this->pushParsedModule($modules, $currentModule);
                 $currentModule = $this->makeEmptyModule($subModuleNumber, $subModuleTitle);
+                if ($duration) $currentModule['duration'] = $duration;
                 $currentModule['parent_module'] = $parentModuleTitle;
                 $pendingField = null;
 
@@ -95,7 +115,7 @@ class BepAccReferentielExtractor
 
             $pendingField = null;
 
-            if (preg_match('/^(?:\d+\s*[-.]?\s*)?(?:TITRE DU MODULE|INTITULÃ‰ DU MODULE|INTITULE DU MODULE)(?:\s*\d+)?\s*:\s*(.+)$/ui', $line, $matches)) {
+            if (preg_match('/^(?:\d+\s*[-.]?\s*)?(?:TITRE DU MODULE|INTITULÉ DU MODULE|INTITULE DU MODULE)(?:\s*\d+)?\s*:\s*(.+)$/ui', $line, $matches)) {
                 if ($currentModule && !empty($currentModule['title'])) {
                     $this->pushParsedModule($modules, $currentModule);
                     $currentModule = null;
@@ -137,21 +157,21 @@ class BepAccReferentielExtractor
                 $currentModule['code'] = null; // Ignore code for Bep Acc
             }
 
-            if (preg_match('/^(?:\d+\s*[-.]?\s*)?(?:DUR(?:Ã‰|E|EE)(?:E)?(?:[^:]*))\s*:\s*(\d+)/ui', $line, $matches)) {
+            if (preg_match('/(?:DUR(?:É|E|EE)(?:E)?|VOLUME HORAIRE|TEMPS).*?(?:\s*[:\-]\s*|\s+)(\d+)\s*(?:[hH]|heures?|Heures?)/ui', $line, $matches)) {
                 $currentModule['duration'] = (int) $matches[1];
             }
 
-            if (preg_match('/^(?:\d+\s*[-.]?\s*)?NIVEAU(?:[^:]*)\s*:\s*(.+?)(?:\s+Volume|\s*$)/ui', $line, $matches)) {
+            if (preg_match('/^(?:\d+\s*[-.]?\s*)?(?:NIVEAU|CLASSE)(?:[^:\-]*)(?:\s*[:\-]\s*|\s+)(.+?)(?:\s+Volume|\s*$)/ui', $line, $matches)) {
                 $currentModule['level'] = $matches[1];
                 $pendingField = 'level';
             }
 
-            if (preg_match('/^(?:\d+\s*[-.]?\s*)?D(?:Ã‰|E)MARCHES?\s+P(?:Ã‰|E)DAGOGIQUES?\s*:?\s*(.*)$/ui', $line, $matches)) {
+            if (preg_match('/^(?:\d+\s*[-.]?\s*)?D(?:É|E)MARCHES?\s+P(?:É|E)DAGOGIQUES?\s*:?\s*(.*)$/ui', $line, $matches)) {
                 $currentModule['pedagogical_approach'] = $matches[1];
                 $pendingField = 'pedagogical_approach';
             }
 
-            if (preg_match('/^(?:\d+\s*[-.]?\s*)?TYPE(?:S)?\s+D[\'â€™]?(?:Ã‰|E)PREUVE\s*:?\s*(.*)$/ui', $line, $matches)) {
+            if (preg_match('/^(?:\d+\s*[-.]?\s*)?TYPE(?:S)?\s+D[\'’]?(?:É|E)PREUVE\s*:?\s*(.*)$/ui', $line, $matches)) {
                 $currentModule['assessment_type'] = $matches[1];
                 $pendingField = 'assessment_type';
             }
@@ -223,7 +243,7 @@ class BepAccReferentielExtractor
             return false;
         }
 
-        if (preg_match('/^Inspection de l[\'â€™]?enseignement.*\bPage\s+\d+\b/ui', $line)) {
+        if (preg_match('/^Inspection de l[\'’]?enseignement.*\bPage\s+\d+\b/ui', $line)) {
             return false;
         }
 
@@ -231,7 +251,7 @@ class BepAccReferentielExtractor
             return false;
         }
 
-        if (preg_match('/^(?:\d+\s*[-.]?\s*)?(?:TITRE DU MODULE|INTITULÃ‰ DU MODULE|INTITULE DU MODULE|CODE|CODE DU MODULE|Code du module|DUR(?:Ã‰|E|EE)E|DURÃ‰E DU MODULE|DUREE DU MODULE|NIVEAU|OBJECTIF VISE|PLACE DANS LE REFERENTIEL|RÃ”LE ET IMPORTANCE|ROLE ET IMPORTANCE|CONTENUS ESSENTIELS|TYPE(?:S)?\s+D|D(?:Ã‰|E)MARCHES?\s+P)/ui', $line)) {
+        if (preg_match('/^(?:\d+\s*[-.]?\s*)?(?:TITRE DU MODULE|INTITULÉ DU MODULE|INTITULE DU MODULE|CODE|CODE DU MODULE|Code du module|DUR(?:É|E|EE)E|DURÉE DU MODULE|DUREE DU MODULE|NIVEAU|OBJECTIF VISE|PLACE DANS LE REFERENTIEL|RÃ”LE ET IMPORTANCE|ROLE ET IMPORTANCE|CONTENUS ESSENTIELS|TYPE(?:S)?\s+D|D(?:É|E)MARCHES?\s+P)/ui', $line)) {
             return false;
         }
 
@@ -258,7 +278,7 @@ class BepAccReferentielExtractor
             ["'", "'", '-', '-'],
             $value
         );
-        $value = preg_replace('/Inspection de l[\'â€™]?enseignement.*?\bPage\s+\d+\b\s*/ui', '', $value) ?? $value;
+        $value = preg_replace('/Inspection de l[\'’]?enseignement.*?\bPage\s+\d+\b\s*/ui', '', $value) ?? $value;
         $value = preg_replace('/\s+/u', ' ', $value) ?? $value;
         $value = str_replace(['d\'?uvre', 'D\'?uvre'], ["d'oeuvre", "D'oeuvre"], $value);
         $value = preg_replace('/,\s*,+/', ', ', $value) ?? $value;
