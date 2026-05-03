@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Module;
 use App\Models\Referentiel;
+use App\Services\Referentiels\BepAccReferentielExtractor;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
@@ -68,7 +69,11 @@ class ReferentielController extends Controller
                 return;
             }
 
-            foreach ($this->parseModulesFromText($text) as $module) {
+            $modules = $this->isBepAccReferentiel($referentiel)
+                ? app(BepAccReferentielExtractor::class)->parseModulesFromText($text)
+                : $this->parseModulesFromText($text);
+
+            foreach ($modules as $module) {
                 $referentiel->modules()->create($module);
             }
         } catch (\Throwable $e) {
@@ -90,6 +95,14 @@ class ReferentielController extends Controller
             'doc' => $this->extractTextFromLegacyWord($path),
             default => throw new \RuntimeException("Type de fichier non supporte: {$extension}"),
         };
+    }
+
+    private function isBepAccReferentiel(Referentiel $referentiel): bool
+    {
+        $value = mb_strtolower($referentiel->title . ' ' . basename($referentiel->file_path));
+
+        return str_contains($value, 'bep acc')
+            || (str_contains($value, 'rfc') && str_contains($value, 'acc'));
     }
 
     private function extractTextFromPdf(string $path): string
